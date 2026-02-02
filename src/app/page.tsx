@@ -2,7 +2,7 @@
 type TravelItem = {
   timestamp: string;
   type: 'text' | 'image' | 'video' | 'audio';
-  content: string; // Google ドライブのURL
+  content: string;
   comment: string;
 };
 
@@ -12,9 +12,10 @@ type ApiResponse = {
   error?: string;
 };
 
-// Google ドライブのURLをWeb表示用に変換する関数
+// メディアURL変換関数：音声もpreview形式に変更
 function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (!url.includes('drive.google.com')) return url;
+  
   const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
   if (!match) return url;
   const fileId = match[1];
@@ -22,6 +23,7 @@ function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (type === 'image') {
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
   } else {
+    // 動画と音声の両方でプレビュープレイヤーを使用する
     return `https://drive.google.com/file/d/${fileId}/preview`;
   }
 }
@@ -52,7 +54,7 @@ export default async function Page() {
           </h1>
           <div className="h-1 w-12 bg-zinc-700 mx-auto mb-4"></div>
           <p className="text-zinc-500 font-medium uppercase tracking-[0.2em] text-sm">
-            Digital Archive 2026
+            Memory Feed in 2026
           </p>
         </header>
 
@@ -60,39 +62,26 @@ export default async function Page() {
           {logs.map((item, index) => (
             <article key={index} className="group">
               
-              {/* 写真の表示 */}
+              {/* 写真表示：丸みを排除し、横幅最大・高さ自動に設定 */}
               {item.type === 'image' && (
                 <div className="w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
                   <img 
                     src={getMediaUrl(item.content, 'image')} 
-                    alt="Travel Photo" 
                     className="w-full h-auto block grayscale-[20%] hover:grayscale-0 transition-all duration-700" 
                     loading="lazy"
                   />
                 </div>
               )}
 
-              {/* 動画・音声の表示：縦動画に対応するために aspect-video を削除 */}
+              {/* 動画・音声の表示：aspect-videoを削除し、縦動画に対応できる高さを確保 */}
               {(item.type === 'video' || item.type === 'audio') && (
-                <div className={`w-full bg-black border border-zinc-800 overflow-hidden shadow-2xl`}>
-                  {item.type === 'video' ? (
-                    <div className="relative w-full" style={{ height: '70vh', maxHeight: '1000px' }}>
-                      <iframe
-                        src={getMediaUrl(item.content, 'video')}
-                        className="absolute top-0 left-0 w-full h-full"
-                        allow="autoplay"
-                        allowFullScreen
-                      ></iframe>
-                    </div>
-                  ) : (
-                    <div className="h-40 w-full">
-                      <iframe
-                        src={getMediaUrl(item.content, 'audio')}
-                        className="w-full h-full"
-                        allow="autoplay"
-                      ></iframe>
-                    </div>
-                  )}
+                <div className={`w-full bg-black border border-zinc-800 overflow-hidden shadow-2xl ${item.type === 'audio' ? 'h-40' : 'h-[70vh] max-h-[1000px]'}`}>
+                  <iframe
+                    src={getMediaUrl(item.content, item.type)}
+                    className="w-full h-full"
+                    allow="autoplay"
+                    allowFullScreen
+                  ></iframe>
                 </div>
               )}
 
@@ -127,7 +116,7 @@ export default async function Page() {
         </div>
 
         <footer className="mt-24 pb-12 text-center text-zinc-700 text-[10px] tracking-widest uppercase">
-          &copy; 2026 {data.tripName || "Travel Log"} - All Rights Reserved.
+          &copy; 2026 Digital Archive - All Rights Reserved.
         </footer>
       </div>
     </main>
