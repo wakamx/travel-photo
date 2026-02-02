@@ -2,7 +2,7 @@
 type TravelItem = {
   timestamp: string;
   type: 'text' | 'image' | 'video' | 'audio';
-  content: string; // Google ドライブのURL
+  content: string; 
   comment: string;
 };
 
@@ -12,7 +12,10 @@ type ApiResponse = {
   error?: string;
 };
 
-// Google ドライブのURLをWeb表示用に変換する関数
+// URLを検知する正規表現
+const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+
+// メディアURL変換関数
 function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (!url.includes('drive.google.com')) return url;
   const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
@@ -24,6 +27,46 @@ function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   } else {
     return `https://drive.google.com/file/d/${fileId}/preview`;
   }
+}
+
+// テキスト内のURLをリンク化し、プレビューを生成するコンポーネント
+function LinkedText({ text }: { text: string }) {
+  const parts = text.split(URL_REGEX);
+  const urls = text.match(URL_REGEX);
+
+  return (
+    <div className="space-y-6">
+      <p className="text-xl md:text-2xl leading-relaxed font-light text-zinc-200 break-words">
+        {parts.map((part, i) => 
+          URL_REGEX.test(part) ? (
+            <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-white transition-colors">
+              {part}
+            </a>
+          ) : part
+        )}
+      </p>
+      
+      {/* リンクプレビューカード（URLが含まれる場合のみ表示） */}
+      {urls && urls.map((url, i) => (
+        <a key={i} href={url} target="_blank" rel="noopener noreferrer" 
+           className="flex flex-col md:flex-row bg-zinc-950 border border-zinc-800 overflow-hidden hover:border-zinc-600 transition-colors group/card shadow-xl">
+          {/* サムネイル（簡易的にfaviconサービスを利用してサイトロゴを表示） */}
+          <div className="w-full md:w-32 h-32 md:h-auto bg-zinc-900 flex items-center justify-center p-4">
+            <img 
+              src={`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=128`}
+              alt="Site icon"
+              className="w-12 h-12 grayscale group-hover/card:grayscale-0 transition-all duration-500"
+            />
+          </div>
+          <div className="p-4 flex flex-col justify-center overflow-hidden">
+            <span className="text-[10px] text-zinc-600 uppercase tracking-widest mb-1">External Link</span>
+            <span className="text-sm font-bold text-zinc-300 truncate">{new URL(url).hostname}</span>
+            <span className="text-xs text-zinc-500 truncate">{url}</span>
+          </div>
+        </a>
+      ))}
+    </div>
+  );
 }
 
 async function getTravelData(): Promise<ApiResponse> {
@@ -48,7 +91,7 @@ export default async function Page() {
       <div className="max-w-3xl mx-auto">
         <header className="mb-20 text-center">
           <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4">
-             {data.tripName || "旅の記録"}
+             {data.tripName || "旅의 記録"}
           </h1>
           <div className="h-1 w-12 bg-zinc-800 mx-auto mb-4"></div>
           <p className="text-zinc-500 font-medium uppercase tracking-[0.3em] text-xs">
@@ -58,7 +101,6 @@ export default async function Page() {
 
         <div className="flex flex-col gap-20">
           {logs.map((item, index) => {
-            // コメントに「縦」が含まれているかチェック
             const isVertical = item.comment && (item.comment.includes('縦') || item.comment.includes('縦長'));
 
             return (
@@ -75,14 +117,13 @@ export default async function Page() {
                   </div>
                 )}
 
-                {/* 動画表示：縦動画を 9:16 に設定 */}
+                {/* 動画表示 */}
                 {item.type === 'video' && (
                   <div className={`w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl relative
                     ${isVertical ? 'aspect-[9/16]' : 'aspect-video'}`}>
                     <iframe
                       src={getMediaUrl(item.content, 'video')}
                       className="absolute top-0 left-0 w-full h-full"
-                      allow="autoplay"
                       allowFullScreen
                     ></iframe>
                   </div>
@@ -94,18 +135,15 @@ export default async function Page() {
                     <iframe
                       src={getMediaUrl(item.content, 'audio')}
                       className="w-full h-full"
-                      allow="autoplay"
                     ></iframe>
                   </div>
                 )}
 
-                {/* テキスト・詳細エリア */}
+                {/* テキスト・詳細エリア：URL検知機能を適用 */}
                 <div className="mt-8 px-1">
                   {item.type === 'text' ? (
                     <div className="p-8 bg-zinc-900 border border-zinc-800 shadow-inner">
-                      <p className="text-xl md:text-2xl leading-relaxed font-light text-zinc-200">
-                        {item.content}
-                      </p>
+                      <LinkedText text={item.content} />
                     </div>
                   ) : (
                     item.comment && (
@@ -116,9 +154,7 @@ export default async function Page() {
                   )}
                   
                   <footer className="mt-4 flex items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.4em]">
-                    <time className="hover:text-zinc-400 transition-colors">
-                      {new Date(item.timestamp).toLocaleString('ja-JP')}
-                    </time>
+                    <time>{new Date(item.timestamp).toLocaleString('ja-JP')}</time>
                     <div className="flex-grow h-[1px] bg-zinc-900"></div>
                     <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5">
                       {item.type === 'audio' ? 'VOICE' : item.type}
