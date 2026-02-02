@@ -15,18 +15,19 @@ type ApiResponse = {
 // Google ドライブのURLをWeb表示用に変換する関数
 function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (!url.includes('drive.google.com')) return url;
-  const match = url.match(/[?&]id=([^&]+)/);
+  
+  // URLまたはIDからファイルIDを抽出
+  const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
   if (!match) return url;
   const fileId = match[1];
 
   if (type === 'image') {
-    // 高解像度で取得するために sz=w2000 を指定
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
   } else if (type === 'video') {
     return `https://drive.google.com/file/d/${fileId}/preview`;
   } else {
-    // 音声用：直接再生しやすいリンク形式
-    return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    // 音声用：iPhoneのSafariで最も安定して再生される形式に変更
+    return `https://docs.google.com/uc?id=${fileId}`;
   }
 }
 
