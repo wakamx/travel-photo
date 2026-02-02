@@ -52,7 +52,7 @@ export default async function Page() {
       <div className="max-w-2xl mx-auto">
         <header className="mb-10 text-center">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-             耀くんとの {data.tripName || "旅の記録"} 🚢
+              {data.tripName || "旅の記録"} 
           </h1>
           <p className="text-slate-500 mt-2">Special Moments in 2026</p>
         </header>
