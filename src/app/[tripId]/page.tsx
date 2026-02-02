@@ -1,39 +1,47 @@
-import { getTripData } from '@/lib/api';
+// データの型定義（耀くんとの思い出データ）
+type TravelLog = {
+  id: number;
+  title: string;
+  date: string;
+};
 
-export default async function TripPage({ params }: { params: { tripId: string } }) {
-  const data = await getTripData(params.tripId);
+async function getTravelLogs(): Promise<TravelLog[]> {
+  const url = process.env.NEXT_PUBLIC_GAS_API_URL;
+  
+  if (!url) return [];
+
+  // GASからデータを取得（キャッシュさせない設定）
+  const res = await fetch(url, { cache: 'no-store' });
+  
+  if (!res.ok) {
+    throw new Error('データの取得に失敗しました');
+  }
+
+  return res.json();
+}
+
+export default async function Page() {
+  const logs = await getTravelLogs();
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-20 bg-[#FAFAFA] min-h-screen">
-      <header className="mb-24 text-center">
-        <h1 className="text-4xl md:text-5xl font-serif text-gray-800 mb-4">{data.tripName}</h1>
-        <p className="text-sm tracking-widest text-gray-400 uppercase">Documentary with Yoh</p>
-      </header>
+    <main className="min-h-screen p-8 bg-slate-50">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold text-slate-800 mb-8">
+          耀くんとの旅行記 🚢
+        </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-        {data.items.map((item: any, index: number) => (
-          <div key={index} className="group">
-            <div className="overflow-hidden bg-white shadow-sm border border-gray-100">
-              {item.type === 'video' ? (
-                <video src={item.content} controls className="w-full h-auto" />
-              ) : item.type === 'image' ? (
-                <img src={item.content} alt={item.comment} className="w-full h-auto transition-transform duration-700 group-hover:scale-105" />
-              ) : (
-                <div className="p-12 text-center italic text-gray-500 font-serif leading-relaxed">
-                  "{item.content}"
-                </div>
-              )}
-            </div>
-            {item.comment && (
-              <p className="mt-6 text-sm text-gray-600 font-serif leading-relaxed px-2">
-                {item.comment}
-              </p>
-            )}
-            <p className="mt-2 text-[10px] tracking-tighter text-gray-300 px-2 uppercase">
-              {new Date(item.timestamp).toLocaleDateString()}
-            </p>
-          </div>
-        ))}
+        <div className="space-y-4">
+          {logs.length > 0 ? (
+            logs.map((log) => (
+              <div key={log.id} className="p-6 bg-white rounded-xl shadow-sm border border-slate-200">
+                <p className="text-sm text-blue-600 font-medium">{log.date}</p>
+                <h2 className="text-xl font-semibold text-slate-700">{log.title}</h2>
+              </div>
+            ))
+          ) : (
+            <p className="text-slate-500">データがまだありません。</p>
+          )}
+        </div>
       </div>
     </main>
   );
