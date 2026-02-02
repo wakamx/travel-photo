@@ -60,7 +60,7 @@ export default async function Page() {
           {logs.map((item, index) => (
             <article key={index} className="group">
               
-              {/* 写真の表示：丸みなし、境界線を暗めに */}
+              {/* 写真の表示 */}
               {item.type === 'image' && (
                 <div className="w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
                   <img 
@@ -72,15 +72,27 @@ export default async function Page() {
                 </div>
               )}
 
-              {/* 動画・音声の表示：丸みなし */}
+              {/* 動画・音声の表示：縦動画に対応するために aspect-video を削除 */}
               {(item.type === 'video' || item.type === 'audio') && (
-                <div className={`w-full bg-black border border-zinc-800 overflow-hidden shadow-2xl ${item.type === 'audio' ? 'h-40' : 'aspect-video'}`}>
-                  <iframe
-                    src={getMediaUrl(item.content, item.type)}
-                    className="w-full h-full"
-                    allow="autoplay"
-                    allowFullScreen
-                  ></iframe>
+                <div className={`w-full bg-black border border-zinc-800 overflow-hidden shadow-2xl`}>
+                  {item.type === 'video' ? (
+                    <div className="relative w-full" style={{ height: '70vh', maxHeight: '1000px' }}>
+                      <iframe
+                        src={getMediaUrl(item.content, 'video')}
+                        className="absolute top-0 left-0 w-full h-full"
+                        allow="autoplay"
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                  ) : (
+                    <div className="h-40 w-full">
+                      <iframe
+                        src={getMediaUrl(item.content, 'audio')}
+                        className="w-full h-full"
+                        allow="autoplay"
+                      ></iframe>
+                    </div>
+                  )}
                 </div>
               )}
 
