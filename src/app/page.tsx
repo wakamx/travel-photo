@@ -2,7 +2,7 @@
 type TravelItem = {
   timestamp: string;
   type: 'text' | 'image' | 'video';
-  content: string;
+  content: string; // Google ドライブのURL
   comment: string;
 };
 
@@ -10,14 +10,29 @@ type ApiResponse = {
   tripName?: string;
   items?: TravelItem[];
   error?: string;
-  message?: string;
 };
+
+// Google ドライブのURLをWeb表示用に変換する関数
+function getMediaUrl(url: string, type: 'image' | 'video') {
+  if (!url.includes('drive.google.com')) return url;
+  
+  // URLからファイルID（id=xxxx）を抽出
+  const match = url.match(/[?&]id=([^&]+)/);
+  if (!match) return url;
+  const fileId = match[1];
+
+  if (type === 'image') {
+    // 画像用：より軽量で確実なサムネイル用エンドポイントを使用（サイズ指定可能）
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  } else {
+    // 動画用：標準のビデオタグではなくプレビュー用URLを返す
+    return `https://drive.google.com/file/d/${fileId}/preview`;
+  }
+}
 
 async function getTravelData(): Promise<ApiResponse> {
   const url = process.env.NEXT_PUBLIC_GAS_API_URL;
-  if (!url) {
-    return { error: 'Environment variable not set' };
-  }
+  if (!url) return { error: 'Environment variable not set' };
 
   try {
     const res = await fetch(url, { cache: 'no-store' });
@@ -30,16 +45,6 @@ async function getTravelData(): Promise<ApiResponse> {
 
 export default async function Page() {
   const data = await getTravelData();
-
-  if (data.error) {
-    return (
-      <div className="p-8 text-red-500">
-        <h1 className="text-xl font-bold">Error</h1>
-        <p>{data.message || data.error}</p>
-      </div>
-    );
-  }
-
   const logs = data.items || [];
 
   return (
@@ -53,37 +58,48 @@ export default async function Page() {
         </header>
 
         <div className="space-y-8">
-          {logs.length > 0 ? (
-            logs.map((item, index) => (
-              <div key={index} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                {/* メディア表示 (画像・動画) */}
-                {item.type === 'image' && (
-                  <img src={item.content} alt="Travel Photo" className="w-full h-auto" />
-                )}
-                {item.type === 'video' && (
-                  <video src={item.content} controls className="w-full h-auto" />
-                )}
+          {logs.map((item, index) => (
+            <div key={index} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              
+              {/* 写真の表示 */}
+              {item.type === 'image' && (
+                <div className="aspect-video w-full bg-slate-100 relative">
+                  <img 
+                    src={getMediaUrl(item.content, 'image')} 
+                    alt="Travel Photo" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
 
-                {/* テキスト・コメント表示 */}
-                <div className="p-6">
-                  {item.type === 'text' ? (
-                    <p className="text-lg text-slate-800 leading-relaxed">{item.content}</p>
-                  ) : (
-                    item.comment && <p className="text-slate-700 italic">“ {item.comment} ”</p>
-                  )}
-                  
-                  <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-                    <span>{new Date(item.timestamp).toLocaleString('ja-JP')}</span>
-                    <span className="uppercase tracking-widest">{item.type}</span>
-                  </div>
+              {/* 動画の表示（iframeを使用） */}
+              {item.type === 'video' && (
+                <div className="aspect-video w-full">
+                  <iframe
+                    src={getMediaUrl(item.content, 'video')}
+                    className="w-full h-full"
+                    allow="autoplay"
+                    allowFullScreen
+                  ></iframe>
+                </div>
+              )}
+
+              <div className="p-6">
+                {item.type === 'text' ? (
+                  <p className="text-lg text-slate-800 leading-relaxed">{item.content}</p>
+                ) : (
+                  item.comment && <p className="text-slate-700 italic">“ {item.comment} ”</p>
+                )}
+                
+                <div className="mt-4 flex items-center justify-between text-xs text-slate-400 border-t pt-4">
+                  <span>{new Date(item.timestamp).toLocaleString('ja-JP')}</span>
+                  <span className="bg-slate-100 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
+                    {item.type}
+                  </span>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-              <p className="text-slate-400">まだ思い出が記録されていません。<br/>LINEから写真を送ってみましょう！</p>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </main>
