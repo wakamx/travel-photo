@@ -12,9 +12,6 @@ type ApiResponse = {
   error?: string;
 };
 
-// URLを検知する正規表現
-const URL_REGEX = /(https?:\/\/[^\s]+)/g;
-
 // メディアURL変換関数
 function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (!url.includes('drive.google.com')) return url;
@@ -29,26 +26,59 @@ function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   }
 }
 
-// テキスト内のURLをリンク化し、プレビューを生成するコンポーネント
-// スタイルを外部から変更できるように className を追加
+/**
+ * テキスト内のURLや[名前](URL)形式を検知してリンク化し、
+ * プレビューカードを生成するコンポーネント
+ */
 function LinkedText({ text, className }: { text: string; className?: string }) {
-  const parts = text.split(URL_REGEX);
-  const urls = text.match(URL_REGEX);
+  // [名前](URL) 形式、または通常の URL を検知する正規表現
+  const combinedRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
+  
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  const detectedUrls: string[] = [];
+
+  // テキストをパースしてリンク化
+  while ((match = combinedRegex.exec(text)) !== null) {
+    // マッチ前の普通のテキストを追加
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+
+    if (match[1] && match[2]) {
+      // [表示名](URL) の形式が見つかった場合
+      parts.push(
+        <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-white transition-colors">
+          {match[1]}
+        </a>
+      );
+      detectedUrls.push(match[2]);
+    } else if (match[3]) {
+      // 通常の URL が見つかった場合
+      parts.push(
+        <a key={match.index} href={match[3]} target="_blank" rel="noopener noreferrer" className="text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-white transition-colors">
+          {match[3]}
+        </a>
+      );
+      detectedUrls.push(match[3]);
+    }
+    lastIndex = combinedRegex.lastIndex;
+  }
+
+  // 残りのテキストを追加
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
 
   return (
     <div className="space-y-6">
       <p className={className || "text-xl md:text-2xl leading-relaxed font-light text-zinc-200 break-words"}>
-        {parts.map((part, i) => 
-          URL_REGEX.test(part) ? (
-            <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-white transition-colors">
-              {part}
-            </a>
-          ) : part
-        )}
+        {parts.length > 0 ? parts : text}
       </p>
       
-      {/* プレビューカード */}
-      {urls && urls.map((url, i) => (
+      {/* リンクプレビューカード（URLが含まれる場合） */}
+      {detectedUrls.length > 0 && detectedUrls.map((url, i) => (
         <a key={i} href={url} target="_blank" rel="noopener noreferrer" 
            className="flex flex-col md:flex-row bg-zinc-950 border border-zinc-800 overflow-hidden hover:border-zinc-600 transition-colors group/card shadow-xl">
           <div className="w-full md:w-32 h-32 md:h-auto bg-zinc-900 flex items-center justify-center p-4">
@@ -105,7 +135,6 @@ export default async function Page() {
 
             return (
               <article key={index} className="group">
-                {/* 写真表示 */}
                 {item.type === 'image' && (
                   <div className="w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
                     <img 
@@ -117,7 +146,6 @@ export default async function Page() {
                   </div>
                 )}
 
-                {/* 動画表示 */}
                 {item.type === 'video' && (
                   <div className={`w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl relative
                     ${isVertical ? 'aspect-[9/16]' : 'aspect-video'}`}>
@@ -129,7 +157,6 @@ export default async function Page() {
                   </div>
                 )}
 
-                {/* 音声表示 */}
                 {item.type === 'audio' && (
                   <div className="w-full h-40 bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
                     <iframe
@@ -139,7 +166,6 @@ export default async function Page() {
                   </div>
                 )}
 
-                {/* テキスト・詳細エリア */}
                 <div className="mt-8 px-1">
                   {item.type === 'text' ? (
                     <div className="p-8 bg-zinc-900 border border-zinc-800 shadow-inner">
