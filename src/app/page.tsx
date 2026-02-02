@@ -75,10 +75,10 @@ export default async function Page() {
                   </div>
                 )}
 
-                {/* 動画表示：比率固定ロジック */}
+                {/* 動画表示：縦動画を 9:16 に設定 */}
                 {item.type === 'video' && (
                   <div className={`w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl relative
-                    ${isVertical ? 'aspect-[3/4]' : 'aspect-video'}`}>
+                    ${isVertical ? 'aspect-[9/16]' : 'aspect-video'}`}>
                     <iframe
                       src={getMediaUrl(item.content, 'video')}
                       className="absolute top-0 left-0 w-full h-full"
