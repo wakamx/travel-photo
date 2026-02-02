@@ -58,21 +58,21 @@ export default async function Page() {
           {logs.map((item, index) => (
             <article key={index} className="group overflow-hidden">
               
-              {/* 写真の表示：横幅100%・高さ自動・切り取りなし */}
+              {/* 写真の表示：rounded-2xlを削除して角を直角に */}
               {item.type === 'image' && (
-                <div className="w-full bg-white rounded-2xl shadow-md overflow-hidden border border-slate-100">
+                <div className="w-full bg-white shadow-md overflow-hidden border border-slate-100">
                   <img 
                     src={getMediaUrl(item.content, 'image')} 
                     alt="Travel Photo" 
-                    className="w-full h-auto block" // h-autoで比率を維持、w-fullで横幅最大
+                    className="w-full h-auto block" 
                     loading="lazy"
                   />
                 </div>
               )}
 
-              {/* 動画の表示：動画は標準的な16:9を維持（縦動画は黒帯が入ります） */}
+              {/* 動画の表示：rounded-2xlを削除 */}
               {item.type === 'video' && (
-                <div className="w-full aspect-video bg-black rounded-2xl shadow-md overflow-hidden border border-slate-100">
+                <div className="w-full aspect-video bg-black shadow-md overflow-hidden border border-slate-100">
                   <iframe
                     src={getMediaUrl(item.content, 'video')}
                     className="w-full h-full"
@@ -82,10 +82,10 @@ export default async function Page() {
                 </div>
               )}
 
-              {/* テキスト・詳細エリア */}
+              {/* テキスト・詳細エリア：rounded-2xlを削除 */}
               <div className="mt-4 px-2">
                 {item.type === 'text' ? (
-                  <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-200">
+                  <div className="p-6 bg-white shadow-sm border border-slate-200">
                     <p className="text-lg leading-relaxed">{item.content}</p>
                   </div>
                 ) : (
