@@ -15,17 +15,14 @@ type ApiResponse = {
 // Google ドライブのURLをWeb表示用に変換する関数
 function getMediaUrl(url: string, type: 'image' | 'video') {
   if (!url.includes('drive.google.com')) return url;
-  
-  // URLからファイルID（id=xxxx）を抽出
   const match = url.match(/[?&]id=([^&]+)/);
   if (!match) return url;
   const fileId = match[1];
 
   if (type === 'image') {
-    // 画像用：より軽量で確実なサムネイル用エンドポイントを使用（サイズ指定可能）
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    // 高解像度で取得するために sz=w2000 を指定
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
   } else {
-    // 動画用：標準のビデオタグではなくプレビュー用URLを返す
     return `https://drive.google.com/file/d/${fileId}/preview`;
   }
 }
@@ -48,33 +45,34 @@ export default async function Page() {
   const logs = data.items || [];
 
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-slate-50">
-      <div className="max-w-2xl mx-auto">
-        <header className="mb-10 text-center">
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {data.tripName || "旅の記録"} 
+    <main className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900">
+      <div className="max-w-3xl mx-auto">
+        <header className="mb-12 text-center">
+          <h1 className="text-4xl font-black tracking-tighter">
+             {data.tripName || "旅の記録"}
           </h1>
-          <p className="text-slate-500 mt-2">Special Moments in 2026</p>
+          <p className="text-slate-500 mt-3 font-medium">Memory Feed in 2026</p>
         </header>
 
-        <div className="space-y-8">
+        <div className="flex flex-col gap-12">
           {logs.map((item, index) => (
-            <div key={index} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <article key={index} className="group overflow-hidden">
               
-              {/* 写真の表示 */}
+              {/* 写真の表示：横幅100%・高さ自動・切り取りなし */}
               {item.type === 'image' && (
-                <div className="aspect-video w-full bg-slate-100 relative">
+                <div className="w-full bg-white rounded-2xl shadow-md overflow-hidden border border-slate-100">
                   <img 
                     src={getMediaUrl(item.content, 'image')} 
                     alt="Travel Photo" 
-                    className="w-full h-full object-cover"
+                    className="w-full h-auto block" // h-autoで比率を維持、w-fullで横幅最大
+                    loading="lazy"
                   />
                 </div>
               )}
 
-              {/* 動画の表示（iframeを使用） */}
+              {/* 動画の表示：動画は標準的な16:9を維持（縦動画は黒帯が入ります） */}
               {item.type === 'video' && (
-                <div className="aspect-video w-full">
+                <div className="w-full aspect-video bg-black rounded-2xl shadow-md overflow-hidden border border-slate-100">
                   <iframe
                     src={getMediaUrl(item.content, 'video')}
                     className="w-full h-full"
@@ -84,21 +82,27 @@ export default async function Page() {
                 </div>
               )}
 
-              <div className="p-6">
+              {/* テキスト・詳細エリア */}
+              <div className="mt-4 px-2">
                 {item.type === 'text' ? (
-                  <p className="text-lg text-slate-800 leading-relaxed">{item.content}</p>
+                  <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-200">
+                    <p className="text-lg leading-relaxed">{item.content}</p>
+                  </div>
                 ) : (
-                  item.comment && <p className="text-slate-700 italic">“ {item.comment} ”</p>
+                  item.comment && (
+                    <p className="text-xl font-medium text-slate-700 leading-snug">
+                      {item.comment}
+                    </p>
+                  )
                 )}
                 
-                <div className="mt-4 flex items-center justify-between text-xs text-slate-400 border-t pt-4">
-                  <span>{new Date(item.timestamp).toLocaleString('ja-JP')}</span>
-                  <span className="bg-slate-100 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
-                    {item.type}
-                  </span>
-                </div>
+                <footer className="mt-3 flex items-center gap-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                  <time>{new Date(item.timestamp).toLocaleString('ja-JP')}</time>
+                  <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                  <span>{item.type}</span>
+                </footer>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </div>
