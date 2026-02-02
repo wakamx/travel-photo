@@ -1,8 +1,8 @@
 // データの型定義
 type TravelItem = {
   timestamp: string;
-  type: 'text' | 'image' | 'video' | 'audio'; // audioを追加
-  content: string; // Google ドライブのURL
+  type: 'text' | 'image' | 'video' | 'audio';
+  content: string;
   comment: string;
 };
 
@@ -12,22 +12,19 @@ type ApiResponse = {
   error?: string;
 };
 
-// Google ドライブのURLをWeb表示用に変換する関数
+// メディアURL変換関数：音声もpreview形式に変更
 function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (!url.includes('drive.google.com')) return url;
   
-  // URLまたはIDからファイルIDを抽出
   const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
   if (!match) return url;
   const fileId = match[1];
 
   if (type === 'image') {
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
-  } else if (type === 'video') {
-    return `https://drive.google.com/file/d/${fileId}/preview`;
   } else {
-    // 音声用：iPhoneのSafariで最も安定して再生される形式に変更
-    return `https://docs.google.com/uc?id=${fileId}`;
+    // 動画と音声の両方でプレビュープレイヤーを使用する
+    return `https://drive.google.com/file/d/${fileId}/preview`;
   }
 }
 
@@ -62,23 +59,22 @@ export default async function Page() {
           {logs.map((item, index) => (
             <article key={index} className="group overflow-hidden">
               
-              {/* 写真の表示：rounded-2xlを削除して角を直角に保持 */}
+              {/* 写真表示 */}
               {item.type === 'image' && (
                 <div className="w-full bg-white shadow-md overflow-hidden border border-slate-100">
                   <img 
                     src={getMediaUrl(item.content, 'image')} 
-                    alt="Travel Photo" 
-                    className="w-full h-auto block" // h-autoで比率を維持、w-fullで横幅最大
+                    className="w-full h-auto block" 
                     loading="lazy"
                   />
                 </div>
               )}
 
-              {/* 動画の表示：rounded-2xlを削除 */}
-              {item.type === 'video' && (
-                <div className="w-full aspect-video bg-black shadow-md overflow-hidden border border-slate-100">
+              {/* 動画・音声の表示：iframeプレイヤーで統一 */}
+              {(item.type === 'video' || item.type === 'audio') && (
+                <div className={`w-full bg-black shadow-md overflow-hidden border border-slate-100 ${item.type === 'audio' ? 'h-40' : 'aspect-video'}`}>
                   <iframe
-                    src={getMediaUrl(item.content, 'video')}
+                    src={getMediaUrl(item.content, item.type)}
                     className="w-full h-full"
                     allow="autoplay"
                     allowFullScreen
@@ -86,17 +82,7 @@ export default async function Page() {
                 </div>
               )}
 
-              {/* 音声の表示：新規追加 */}
-              {item.type === 'audio' && (
-                <div className="w-full p-6 bg-white shadow-md border border-slate-100 flex flex-col items-center gap-4">
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Voice Message</p>
-                  <audio controls src={getMediaUrl(item.content, 'audio')} className="w-full max-w-md">
-                    ブラウザが音声再生に対応していません。
-                  </audio>
-                </div>
-              )}
-
-              {/* テキスト・詳細エリア：rounded-2xlを削除 */}
+              {/* テキスト・詳細エリア */}
               <div className="mt-4 px-2">
                 {item.type === 'text' ? (
                   <div className="p-6 bg-white shadow-sm border border-slate-200">
@@ -113,7 +99,7 @@ export default async function Page() {
                 <footer className="mt-3 flex items-center gap-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   <time>{new Date(item.timestamp).toLocaleString('ja-JP')}</time>
                   <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                  <span>{item.type}</span>
+                  <span>{item.type === 'audio' ? 'VOICE' : item.type}</span>
                 </footer>
               </div>
             </article>
