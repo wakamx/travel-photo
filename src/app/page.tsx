@@ -1,7 +1,7 @@
 // データの型定義
 type TravelItem = {
   timestamp: string;
-  type: 'text' | 'image' | 'video';
+  type: 'text' | 'image' | 'video' | 'audio'; // audioを追加
   content: string; // Google ドライブのURL
   comment: string;
 };
@@ -13,7 +13,7 @@ type ApiResponse = {
 };
 
 // Google ドライブのURLをWeb表示用に変換する関数
-function getMediaUrl(url: string, type: 'image' | 'video') {
+function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (!url.includes('drive.google.com')) return url;
   const match = url.match(/[?&]id=([^&]+)/);
   if (!match) return url;
@@ -22,8 +22,11 @@ function getMediaUrl(url: string, type: 'image' | 'video') {
   if (type === 'image') {
     // 高解像度で取得するために sz=w2000 を指定
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
-  } else {
+  } else if (type === 'video') {
     return `https://drive.google.com/file/d/${fileId}/preview`;
+  } else {
+    // 音声用：直接再生しやすいリンク形式
+    return `https://drive.google.com/uc?export=download&id=${fileId}`;
   }
 }
 
@@ -58,13 +61,13 @@ export default async function Page() {
           {logs.map((item, index) => (
             <article key={index} className="group overflow-hidden">
               
-              {/* 写真の表示：rounded-2xlを削除して角を直角に */}
+              {/* 写真の表示：rounded-2xlを削除して角を直角に保持 */}
               {item.type === 'image' && (
                 <div className="w-full bg-white shadow-md overflow-hidden border border-slate-100">
                   <img 
                     src={getMediaUrl(item.content, 'image')} 
                     alt="Travel Photo" 
-                    className="w-full h-auto block" 
+                    className="w-full h-auto block" // h-autoで比率を維持、w-fullで横幅最大
                     loading="lazy"
                   />
                 </div>
@@ -79,6 +82,16 @@ export default async function Page() {
                     allow="autoplay"
                     allowFullScreen
                   ></iframe>
+                </div>
+              )}
+
+              {/* 音声の表示：新規追加 */}
+              {item.type === 'audio' && (
+                <div className="w-full p-6 bg-white shadow-md border border-slate-100 flex flex-col items-center gap-4">
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Voice Message</p>
+                  <audio controls src={getMediaUrl(item.content, 'audio')} className="w-full max-w-md">
+                    ブラウザが音声再生に対応していません。
+                  </audio>
                 </div>
               )}
 
