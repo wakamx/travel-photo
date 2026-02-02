@@ -30,13 +30,14 @@ function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
 }
 
 // テキスト内のURLをリンク化し、プレビューを生成するコンポーネント
-function LinkedText({ text }: { text: string }) {
+// スタイルを外部から変更できるように className を追加
+function LinkedText({ text, className }: { text: string; className?: string }) {
   const parts = text.split(URL_REGEX);
   const urls = text.match(URL_REGEX);
 
   return (
     <div className="space-y-6">
-      <p className="text-xl md:text-2xl leading-relaxed font-light text-zinc-200 break-words">
+      <p className={className || "text-xl md:text-2xl leading-relaxed font-light text-zinc-200 break-words"}>
         {parts.map((part, i) => 
           URL_REGEX.test(part) ? (
             <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-white transition-colors">
@@ -46,11 +47,10 @@ function LinkedText({ text }: { text: string }) {
         )}
       </p>
       
-      {/* リンクプレビューカード（URLが含まれる場合のみ表示） */}
+      {/* プレビューカード */}
       {urls && urls.map((url, i) => (
         <a key={i} href={url} target="_blank" rel="noopener noreferrer" 
            className="flex flex-col md:flex-row bg-zinc-950 border border-zinc-800 overflow-hidden hover:border-zinc-600 transition-colors group/card shadow-xl">
-          {/* サムネイル（簡易的にfaviconサービスを利用してサイトロゴを表示） */}
           <div className="w-full md:w-32 h-32 md:h-auto bg-zinc-900 flex items-center justify-center p-4">
             <img 
               src={`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=128`}
@@ -91,7 +91,7 @@ export default async function Page() {
       <div className="max-w-3xl mx-auto">
         <header className="mb-20 text-center">
           <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4">
-             {data.tripName || "旅의 記録"}
+             {data.tripName || "旅の記録"}
           </h1>
           <div className="h-1 w-12 bg-zinc-800 mx-auto mb-4"></div>
           <p className="text-zinc-500 font-medium uppercase tracking-[0.3em] text-xs">
@@ -139,7 +139,7 @@ export default async function Page() {
                   </div>
                 )}
 
-                {/* テキスト・詳細エリア：URL検知機能を適用 */}
+                {/* テキスト・詳細エリア */}
                 <div className="mt-8 px-1">
                   {item.type === 'text' ? (
                     <div className="p-8 bg-zinc-900 border border-zinc-800 shadow-inner">
@@ -147,9 +147,12 @@ export default async function Page() {
                     </div>
                   ) : (
                     item.comment && (
-                      <p className="text-2xl font-bold text-zinc-100 leading-tight mb-4 tracking-tight">
-                        {item.comment}
-                      </p>
+                      <div className="mb-6">
+                        <LinkedText 
+                          text={item.comment} 
+                          className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight break-words"
+                        />
+                      </div>
                     )
                   )}
                   
