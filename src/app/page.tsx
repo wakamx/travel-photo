@@ -67,13 +67,14 @@ export default function Page(props: {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-  const [filterDate, setFilterDate] = useState<string>(""); // フィルタリング用の日付
+  const [filterDate, setFilterDate] = useState<string>(""); 
   const [items, setItems] = useState<TravelItem[]>([]);
 
   // データ取得
   const fetchData = async () => {
     setLoading(true);
     const baseUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (!baseUrl) return;
     const url = tripId ? `${baseUrl}?tripId=${tripId}` : `${baseUrl}?mode=list`;
     try {
       const res = await fetch(url);
@@ -92,7 +93,7 @@ export default function Page(props: {
     fetchData();
   }, [tripId]);
 
-  // 削除処理
+  // 個別削除処理
   const handleDelete = async (timestamp: string) => {
     if (!confirm("この投稿を削除しますか？")) return;
     const baseUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
@@ -104,11 +105,20 @@ export default function Page(props: {
     }
   };
 
-  // ソートとフィルタリングの組み合わせ
+  // 登録されている全アイテムから、重複のない日付リストを生成
+  const availableDates = Array.from(new Set(items.map(item => 
+    new Date(item.timestamp).toLocaleDateString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\//g, '-')
+  ))).sort().reverse();
+
+  // フィルタリングとソートの適用
   const processedItems = items
     .filter(item => {
       if (!filterDate) return true;
-      // 日本時間の日付文字列 (YYYY-MM-DD) を作成して比較
       const itemDate = new Date(item.timestamp).toLocaleDateString('ja-JP', {
         timeZone: 'Asia/Tokyo',
         year: 'numeric',
@@ -159,7 +169,7 @@ export default function Page(props: {
                   <div className="grid grid-cols-3 gap-0.5 bg-zinc-800 h-48">
                     {album.thumbnails.map((url, i) => (
                       <div key={i} className="bg-zinc-950 overflow-hidden">
-                        <img src={getMediaUrl(url, 'image', 'small')} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500" />
+                        <img src={getMediaUrl(url, 'image', 'small')} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500" loading="lazy" />
                       </div>
                     ))}
                   </div>
@@ -182,26 +192,24 @@ export default function Page(props: {
           </Link>
           
           <div className="flex items-center gap-2">
-            {/* 日付フィルタ */}
-            <input 
-              type="date" 
+            {/* 日付フィルタ：登録がある日付のみを表示 */}
+            <select 
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="text-[10px] font-bold text-zinc-300 bg-zinc-900 px-2 py-1 border border-zinc-800 focus:outline-none focus:border-zinc-500 transition-all"
-            />
-            {filterDate && (
-              <button 
-                onClick={() => setFilterDate("")}
-                className="text-[10px] font-bold text-zinc-500 hover:text-zinc-200 transition-colors"
-              >
-                Clear
-              </button>
-            )}
+              className="text-[10px] font-bold text-zinc-300 bg-zinc-900 px-3 py-1.5 border border-zinc-800 focus:outline-none focus:border-zinc-500 appearance-none cursor-pointer hover:bg-zinc-800 transition-all"
+            >
+              <option value="">すべての日程</option>
+              {availableDates.map(date => (
+                <option key={date} value={date}>{date}</option>
+              ))}
+            </select>
+            
             <div className="w-[1px] h-4 bg-zinc-800 mx-1"></div>
+            
             {/* ソート */}
             <button 
               onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-              className="text-[10px] font-bold text-zinc-400 bg-zinc-900 px-3 py-1 border border-zinc-800 hover:text-white transition-all"
+              className="text-[10px] font-bold text-zinc-400 bg-zinc-900 px-4 py-1.5 border border-zinc-800 hover:text-white transition-all"
             >
               {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
             </button>
@@ -221,7 +229,7 @@ export default function Page(props: {
                 <article key={item.timestamp} className="group">
                   {item.type === 'image' && (
                     <div className="w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
-                      <img src={getMediaUrl(item.content, 'image')} className="w-full h-auto block grayscale-[10%] hover:grayscale-0 transition-all duration-700" />
+                      <img src={getMediaUrl(item.content, 'image')} className="w-full h-auto block grayscale-[10%] hover:grayscale-0 transition-all duration-700" loading="lazy" />
                     </div>
                   )}
                   {item.type === 'video' && (
@@ -252,7 +260,7 @@ export default function Page(props: {
                       <time>{new Date(item.timestamp).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time>
                       <span className="text-zinc-500 font-normal italic">by {item.author || "User"}</span>
                       <div className="flex-grow h-[1px] bg-zinc-900"></div>
-                      <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5">{item.type}</span>
+                      <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5 uppercase">{item.type}</span>
                     </footer>
                   </div>
                 </article>
