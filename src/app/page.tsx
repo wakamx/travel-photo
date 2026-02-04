@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-// 型定義
+// データの型定義
 type TravelItem = {
   timestamp: string;
   author: string;
@@ -19,7 +19,7 @@ type ApiResponse = {
   tripId?: string;
   tripName?: string;
   items?: TravelItem[];
-  albums?: Album[]; // 一覧用
+  albums?: Album[]; 
   error?: string;
 };
 
@@ -51,7 +51,6 @@ function LinkedText({ text, className }: { text: string; className?: string }) {
   return <p className={className || "text-xl md:text-2xl leading-relaxed font-light text-zinc-200 break-words"}>{parts.length > 0 ? parts : text}</p>;
 }
 
-// データ取得用関数 ( tripId があれば詳細、なければ一覧 )
 async function getTravelData(tripId?: string): Promise<ApiResponse> {
   const baseUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
   if (!baseUrl) return { error: 'Environment variable not set' };
@@ -67,8 +66,13 @@ async function getTravelData(tripId?: string): Promise<ApiResponse> {
   }
 }
 
-export default async function Page({ searchParams }: { searchParams: { tripId?: string } }) {
-  const tripId = searchParams.tripId;
+// Next.js 15 では searchParams を Promise として受け取り await する必要があります
+export default async function Page(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
+  const tripId = typeof searchParams.tripId === 'string' ? searchParams.tripId : undefined;
+  
   const data = await getTravelData(tripId);
 
   // --- まとめページ（一覧）の表示 ---
