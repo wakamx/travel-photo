@@ -12,6 +12,9 @@ type ApiResponse = {
   error?: string;
 };
 
+// URLを検知する正規表現
+const URL_REGEX = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
+
 // メディアURL変換関数
 function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (!url.includes('drive.google.com')) return url;
@@ -27,75 +30,43 @@ function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
 }
 
 /**
- * テキスト内のURLや[名前](URL)形式を検知してリンク化し、
- * プレビューカードを生成するコンポーネント
+ * テキスト内のURLや[名前](URL)形式を検知してリンク化するコンポーネント
+ * ※詳細カード（プレビューカード）の表示機能を削除しました
  */
 function LinkedText({ text, className }: { text: string; className?: string }) {
-  // [名前](URL) 形式、または通常の URL を検知する正規表現
-  const combinedRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
-  
   const parts = [];
   let lastIndex = 0;
   let match;
-  const detectedUrls: string[] = [];
 
-  // テキストをパースしてリンク化
-  while ((match = combinedRegex.exec(text)) !== null) {
-    // マッチ前の普通のテキストを追加
+  while ((match = URL_REGEX.exec(text)) !== null) {
     if (match.index > lastIndex) {
       parts.push(text.substring(lastIndex, match.index));
     }
 
     if (match[1] && match[2]) {
-      // [表示名](URL) の形式が見つかった場合
       parts.push(
         <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-white transition-colors">
           {match[1]}
         </a>
       );
-      detectedUrls.push(match[2]);
     } else if (match[3]) {
-      // 通常の URL が見つかった場合
       parts.push(
         <a key={match.index} href={match[3]} target="_blank" rel="noopener noreferrer" className="text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-white transition-colors">
           {match[3]}
         </a>
       );
-      detectedUrls.push(match[3]);
     }
-    lastIndex = combinedRegex.lastIndex;
+    lastIndex = URL_REGEX.lastIndex;
   }
 
-  // 残りのテキストを追加
   if (lastIndex < text.length) {
     parts.push(text.substring(lastIndex));
   }
 
   return (
-    <div className="space-y-6">
-      <p className={className || "text-xl md:text-2xl leading-relaxed font-light text-zinc-200 break-words"}>
-        {parts.length > 0 ? parts : text}
-      </p>
-      
-      {/* リンクプレビューカード（URLが含まれる場合） */}
-      {detectedUrls.length > 0 && detectedUrls.map((url, i) => (
-        <a key={i} href={url} target="_blank" rel="noopener noreferrer" 
-           className="flex flex-col md:flex-row bg-zinc-950 border border-zinc-800 overflow-hidden hover:border-zinc-600 transition-colors group/card shadow-xl">
-          <div className="w-full md:w-32 h-32 md:h-auto bg-zinc-900 flex items-center justify-center p-4">
-            <img 
-              src={`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=128`}
-              alt="Site icon"
-              className="w-12 h-12 grayscale group-hover/card:grayscale-0 transition-all duration-500"
-            />
-          </div>
-          <div className="p-4 flex flex-col justify-center overflow-hidden">
-            <span className="text-[10px] text-zinc-600 uppercase tracking-widest mb-1">External Link</span>
-            <span className="text-sm font-bold text-zinc-300 truncate">{new URL(url).hostname}</span>
-            <span className="text-xs text-zinc-500 truncate">{url}</span>
-          </div>
-        </a>
-      ))}
-    </div>
+    <p className={className || "text-xl md:text-2xl leading-relaxed font-light text-zinc-200 break-words"}>
+      {parts.length > 0 ? parts : text}
+    </p>
   );
 }
 
@@ -159,10 +130,7 @@ export default async function Page() {
 
                 {item.type === 'audio' && (
                   <div className="w-full h-40 bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
-                    <iframe
-                      src={getMediaUrl(item.content, 'audio')}
-                      className="w-full h-full"
-                    ></iframe>
+                    <iframe src={getMediaUrl(item.content, 'audio')} className="w-full h-full"></iframe>
                   </div>
                 )}
 
@@ -183,7 +151,17 @@ export default async function Page() {
                   )}
                   
                   <footer className="mt-4 flex items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.4em]">
-                    <time>{new Date(item.timestamp).toLocaleString('ja-JP')}</time>
+                    {/* 日本時間 (JST) で表示 */}
+                    <time>
+                      {new Date(item.timestamp).toLocaleString('ja-JP', {
+                        timeZone: 'Asia/Tokyo',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </time>
                     <div className="flex-grow h-[1px] bg-zinc-900"></div>
                     <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5">
                       {item.type === 'audio' ? 'VOICE' : item.type}
@@ -196,7 +174,7 @@ export default async function Page() {
         </div>
 
         <footer className="mt-32 pb-16 text-center text-zinc-800 text-[10px] tracking-[0.5em] uppercase">
-          &copy; 2026 Archive - All Rights Reserved.
+          © 2026 Archive - All Rights Reserved.
         </footer>
       </div>
     </main>
