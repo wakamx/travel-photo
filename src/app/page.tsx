@@ -12,10 +12,8 @@ type ApiResponse = {
   error?: string;
 };
 
-// URLを検知する正規表現
 const URL_REGEX = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
 
-// メディアURL変換関数
 function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   if (!url.includes('drive.google.com')) return url;
   const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
@@ -29,10 +27,6 @@ function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
   }
 }
 
-/**
- * テキスト内のURLや[名前](URL)形式を検知してリンク化するコンポーネント
- * ※詳細カード（プレビューカード）の表示機能を削除しました
- */
 function LinkedText({ text, className }: { text: string; className?: string }) {
   const parts = [];
   let lastIndex = 0;
@@ -42,7 +36,6 @@ function LinkedText({ text, className }: { text: string; className?: string }) {
     if (match.index > lastIndex) {
       parts.push(text.substring(lastIndex, match.index));
     }
-
     if (match[1] && match[2]) {
       parts.push(
         <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-zinc-500 underline decoration-zinc-700 underline-offset-4 hover:text-white transition-colors">
@@ -58,10 +51,7 @@ function LinkedText({ text, className }: { text: string; className?: string }) {
     }
     lastIndex = URL_REGEX.lastIndex;
   }
-
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
+  if (lastIndex < text.length) parts.push(text.substring(lastIndex));
 
   return (
     <p className={className || "text-xl md:text-2xl leading-relaxed font-light text-zinc-200 break-words"}>
@@ -73,7 +63,6 @@ function LinkedText({ text, className }: { text: string; className?: string }) {
 async function getTravelData(): Promise<ApiResponse> {
   const url = process.env.NEXT_PUBLIC_GAS_API_URL;
   if (!url) return { error: 'Environment variable not set' };
-
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('Fetch failed');
@@ -108,26 +97,14 @@ export default async function Page() {
               <article key={index} className="group">
                 {item.type === 'image' && (
                   <div className="w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
-                    <img 
-                      src={getMediaUrl(item.content, 'image')} 
-                      alt="Travel Photo" 
-                      className="w-full h-auto block grayscale-[10%] hover:grayscale-0 transition-all duration-700" 
-                      loading="lazy"
-                    />
+                    <img src={getMediaUrl(item.content, 'image')} alt="Travel" className="w-full h-auto block" loading="lazy" />
                   </div>
                 )}
-
                 {item.type === 'video' && (
-                  <div className={`w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl relative
-                    ${isVertical ? 'aspect-[9/16]' : 'aspect-video'}`}>
-                    <iframe
-                      src={getMediaUrl(item.content, 'video')}
-                      className="absolute top-0 left-0 w-full h-full"
-                      allowFullScreen
-                    ></iframe>
+                  <div className={`w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl relative ${isVertical ? 'aspect-[9/16]' : 'aspect-video'}`}>
+                    <iframe src={getMediaUrl(item.content, 'video')} className="absolute top-0 left-0 w-full h-full" allowFullScreen></iframe>
                   </div>
                 )}
-
                 {item.type === 'audio' && (
                   <div className="w-full h-40 bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
                     <iframe src={getMediaUrl(item.content, 'audio')} className="w-full h-full"></iframe>
@@ -142,40 +119,25 @@ export default async function Page() {
                   ) : (
                     item.comment && (
                       <div className="mb-6">
-                        <LinkedText 
-                          text={item.comment} 
-                          className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight break-words"
-                        />
+                        <LinkedText text={item.comment} className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight break-words" />
                       </div>
                     )
                   )}
-                  
                   <footer className="mt-4 flex items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.4em]">
-                    {/* 日本時間 (JST) で表示 */}
                     <time>
                       {new Date(item.timestamp).toLocaleString('ja-JP', {
-                        timeZone: 'Asia/Tokyo',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
                       })}
                     </time>
                     <div className="flex-grow h-[1px] bg-zinc-900"></div>
-                    <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5">
-                      {item.type === 'audio' ? 'VOICE' : item.type}
-                    </span>
+                    <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5">{item.type === 'audio' ? 'VOICE' : item.type}</span>
                   </footer>
                 </div>
               </article>
             );
           })}
         </div>
-
-        <footer className="mt-32 pb-16 text-center text-zinc-800 text-[10px] tracking-[0.5em] uppercase">
-          © 2026 Archive - All Rights Reserved.
-        </footer>
+        <footer className="mt-32 pb-16 text-center text-zinc-800 text-[10px] tracking-[0.5em] uppercase">© 2026 Archive - All Rights Reserved.</footer>
       </div>
     </main>
   );
