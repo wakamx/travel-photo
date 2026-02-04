@@ -70,7 +70,6 @@ export default function Page(props: {
   const [filterDate, setFilterDate] = useState<string>(""); 
   const [items, setItems] = useState<TravelItem[]>([]);
 
-  // データ取得
   const fetchData = async () => {
     setLoading(true);
     const baseUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
@@ -80,9 +79,7 @@ export default function Page(props: {
       const res = await fetch(url);
       const json = await res.json();
       setData(json);
-      if (json.items) {
-        setItems(json.items);
-      }
+      if (json.items) setItems(json.items);
     } catch (e) {
       console.error(e);
     }
@@ -93,7 +90,6 @@ export default function Page(props: {
     fetchData();
   }, [tripId]);
 
-  // 個別削除処理
   const handleDelete = async (timestamp: string) => {
     if (!confirm("この投稿を削除しますか？")) return;
     const baseUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
@@ -105,25 +101,17 @@ export default function Page(props: {
     }
   };
 
-  // 登録されている全アイテムから、重複のない日付リストを生成
   const availableDates = Array.from(new Set(items.map(item => 
     new Date(item.timestamp).toLocaleDateString('ja-JP', {
-      timeZone: 'Asia/Tokyo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+      timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit'
     }).replace(/\//g, '-')
   ))).sort().reverse();
 
-  // フィルタリングとソートの適用
   const processedItems = items
     .filter(item => {
       if (!filterDate) return true;
       const itemDate = new Date(item.timestamp).toLocaleDateString('ja-JP', {
-        timeZone: 'Asia/Tokyo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
+        timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit'
       }).replace(/\//g, '-');
       return itemDate === filterDate;
     })
@@ -144,7 +132,6 @@ export default function Page(props: {
     );
   }
 
-  // --- まとめページ（一覧） ---
   if (!tripId || data?.albums) {
     const albums = data?.albums || [];
     return (
@@ -182,7 +169,6 @@ export default function Page(props: {
     );
   }
 
-  // --- 詳細ページ ---
   return (
     <main className="min-h-screen p-4 md:p-8 bg-black text-white selection:bg-zinc-700 font-sans">
       <div className="max-w-3xl mx-auto">
@@ -192,7 +178,6 @@ export default function Page(props: {
           </Link>
           
           <div className="flex items-center gap-2">
-            {/* 日付フィルタ：登録がある日付のみを表示 */}
             <select 
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
@@ -203,10 +188,7 @@ export default function Page(props: {
                 <option key={date} value={date}>{date}</option>
               ))}
             </select>
-            
             <div className="w-[1px] h-4 bg-zinc-800 mx-1"></div>
-            
-            {/* ソート */}
             <button 
               onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
               className="text-[10px] font-bold text-zinc-400 bg-zinc-900 px-4 py-1.5 border border-zinc-800 hover:text-white transition-all"
@@ -221,12 +203,13 @@ export default function Page(props: {
           <div className="h-1 w-12 bg-zinc-800 mx-auto mb-4"></div>
         </header>
 
-        <div className="flex flex-col gap-20">
+        <div className="flex flex-col gap-24">
           {processedItems.length > 0 ? (
             processedItems.map((item) => {
               const isVertical = item.comment && (item.comment.includes('縦') || item.comment.includes('縦長'));
               return (
                 <article key={item.timestamp} className="group">
+                  {/* メディア表示 */}
                   {item.type === 'image' && (
                     <div className="w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
                       <img src={getMediaUrl(item.content, 'image')} className="w-full h-auto block grayscale-[10%] hover:grayscale-0 transition-all duration-700" loading="lazy" />
@@ -243,25 +226,38 @@ export default function Page(props: {
                     </div>
                   )}
 
-                  <div className="mt-8 px-1 relative">
+                  {/* 撮影情報（中央揃え） */}
+                  <div className="mt-6 flex flex-col items-center gap-1 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.4em]">
+                    <time>
+                      {new Date(item.timestamp).toLocaleString('ja-JP', { 
+                        timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+                      })}
+                    </time>
+                    <span className="text-zinc-500 font-normal italic normal-case tracking-widest">
+                      by {item.author || "User"}
+                    </span>
+                  </div>
+
+                  {/* テキスト・コメントエリア */}
+                  <div className="mt-10 px-1 relative flex flex-col items-center">
                     <button 
                       onClick={() => handleDelete(item.timestamp)}
-                      className="absolute -top-4 right-0 text-[10px] text-zinc-700 hover:text-red-500 transition-colors bg-black px-2 py-1"
+                      className="absolute -top-14 right-0 text-[10px] text-zinc-800 hover:text-red-500 transition-colors bg-transparent px-2 py-1 uppercase tracking-widest"
                     >
                       Delete
                     </button>
 
                     {item.type === 'text' ? (
-                      <div className="p-8 bg-zinc-900 border border-zinc-800 shadow-inner"><LinkedText text={item.content} /></div>
+                      <div className="w-full p-10 bg-zinc-900 border border-zinc-800 shadow-inner text-center">
+                        <LinkedText text={item.content} />
+                      </div>
                     ) : (
-                      item.comment && <div className="mb-6"><LinkedText text={item.comment} className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight break-words" /></div>
+                      item.comment && (
+                        <div className="mt-4 text-center max-w-xl">
+                          <LinkedText text={item.comment} className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight break-words" />
+                        </div>
+                      )
                     )}
-                    <footer className="mt-4 flex items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.4em]">
-                      <time>{new Date(item.timestamp).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time>
-                      <span className="text-zinc-500 font-normal italic">by {item.author || "User"}</span>
-                      <div className="flex-grow h-[1px] bg-zinc-900"></div>
-                      <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5 uppercase">{item.type}</span>
-                    </footer>
                   </div>
                 </article>
               );
