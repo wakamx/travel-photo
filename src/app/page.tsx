@@ -13,6 +13,7 @@ type Album = {
   id: string;
   name: string;
   status: string;
+  thumbnails: string[]; // サムネイル画像のURLリストを追加
 };
 
 type ApiResponse = {
@@ -25,12 +26,18 @@ type ApiResponse = {
 
 const URL_REGEX = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
 
-function getMediaUrl(url: string, type: 'image' | 'video' | 'audio') {
+// GoogleドライブのURLを表示用（サムネイル/プレビュー）に変換する関数
+function getMediaUrl(url: string, type: 'image' | 'video' | 'audio', size: 'small' | 'large' = 'large') {
   if (!url.includes('drive.google.com')) return url;
   const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
   if (!match) return url;
   const fileId = match[1];
-  if (type === 'image') return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
+
+  if (type === 'image') {
+    // smallの場合は小さめのサムネイルを取得してパフォーマンスを向上
+    const sizeParam = size === 'small' ? 'h400' : 'w2000';
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=${sizeParam}`;
+  }
   return `https://drive.google.com/file/d/${fileId}/preview`;
 }
 
@@ -58,6 +65,7 @@ async function getTravelData(tripId?: string): Promise<ApiResponse> {
   const url = tripId ? `${baseUrl}?tripId=${tripId}` : `${baseUrl}?mode=list`;
   
   try {
+    // データ取得時のキャッシュを無効化して常に最新のデータを取得
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('Fetch failed');
     return res.json();
@@ -66,13 +74,13 @@ async function getTravelData(tripId?: string): Promise<ApiResponse> {
   }
 }
 
-// Next.js 15 では searchParams を Promise として受け取り await する必要があります
 export default async function Page(props: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const searchParams = await props.searchParams;
   const tripId = typeof searchParams.tripId === 'string' ? searchParams.tripId : undefined;
   
+  // データ取得中は loading.tsx が自動的に表示される
   const data = await getTravelData(tripId);
 
   // --- まとめページ（一覧）の表示 ---
@@ -80,25 +88,52 @@ export default async function Page(props: {
     const albums = data.albums || [];
     return (
       <main className="min-h-screen p-8 bg-black text-white font-sans">
-        <div className="max-w-3xl mx-auto mt-20">
+        <div className="max-w-4xl mx-auto mt-20">
           <header className="mb-20 text-center">
             <h1 className="text-5xl font-black tracking-tighter mb-4 italic">ANOTHER SKY</h1>
             <div className="h-1 w-12 bg-zinc-800 mx-auto mb-4"></div>
             <p className="text-zinc-500 font-medium uppercase tracking-[0.3em] text-xs">Archives Index</p>
           </header>
 
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {albums.map((album) => (
               <Link 
                 key={album.id} 
                 href={`/?tripId=${album.id}`}
-                className="group flex items-center justify-between p-8 bg-zinc-900 border border-zinc-800 hover:border-zinc-500 transition-all shadow-xl"
+                className="group block bg-zinc-900 border border-zinc-800 hover:border-zinc-500 transition-all shadow-xl overflow-hidden"
               >
-                <div>
-                  <h2 className="text-2xl font-bold group-hover:text-zinc-200 transition-colors italic">{album.name}</h2>
-                  <span className="text-[10px] text-zinc-600 uppercase tracking-widest">{album.status === 'active' ? '● Recording' : 'Archive'}</span>
+                <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+                   <div>
+                    <h2 className="text-2xl font-bold group-hover:text-zinc-200 transition-colors italic truncate">{album.name}</h2>
+                    <span className="text-[10px] text-zinc-600 uppercase tracking-widest">{album.status === 'active' ? '● Recording' : 'Archive'}</span>
+                  </div>
+                  <span className="text-zinc-700 group-hover:text-white transition-all transform group-hover:translate-x-2">→</span>
                 </div>
-                <span className="text-zinc-700 group-hover:text-white transition-all transform group-hover:translate-x-2">→</span>
+                
+                {/* サムネイル画像の表示エリア */}
+                {album.thumbnails.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-0.5 bg-zinc-800 h-48">
+                    {album.thumbnails.map((url, index) => (
+                      <div key={index} className="relative w-full h-full overflow-hidden bg-zinc-950">
+                        <img 
+                          src={getMediaUrl(url, 'image', 'small')} // 小さいサイズのサムネイルを取得
+                          alt={`Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500"
+                          loading="lazy"
+                        />
+                      </div>
+                    ))}
+                    {/* 写真が3枚未満の場合の空白埋め */}
+                    {[...Array(3 - album.thumbnails.length)].map((_, i) => (
+                      <div key={`empty-${i}`} className="bg-zinc-950/50 h-full w-full"></div>
+                    ))}
+                  </div>
+                ) : (
+                   // 写真が1枚もない場合のプレースホルダー
+                   <div className="h-48 bg-zinc-950/30 flex items-center justify-center text-zinc-700 text-xs uppercase tracking-widest">
+                     No Photos Yet
+                   </div>
+                )}
               </Link>
             ))}
           </div>
