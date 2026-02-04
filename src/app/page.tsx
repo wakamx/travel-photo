@@ -67,6 +67,7 @@ export default function Page(props: {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [filterDate, setFilterDate] = useState<string>(""); // フィルタリング用の日付
   const [items, setItems] = useState<TravelItem[]>([]);
 
   // データ取得
@@ -97,20 +98,30 @@ export default function Page(props: {
     const baseUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
     try {
       await fetch(`${baseUrl}?action=deleteContent&timestamp=${timestamp}`, { mode: 'no-cors' });
-      // 成功したとみなしてローカルから消す（no-corsの場合は成否判定が難しいため）
       setItems(prev => prev.filter(item => item.timestamp !== timestamp));
-      alert("削除リクエストを送信しました（反映まで時間がかかる場合があります）");
     } catch (e) {
       alert("エラーが発生しました");
     }
   };
 
-  // ソート処理
-  const sortedItems = [...items].sort((a, b) => {
-    const timeA = new Date(a.timestamp).getTime();
-    const timeB = new Date(b.timestamp).getTime();
-    return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
-  });
+  // ソートとフィルタリングの組み合わせ
+  const processedItems = items
+    .filter(item => {
+      if (!filterDate) return true;
+      // 日本時間の日付文字列 (YYYY-MM-DD) を作成して比較
+      const itemDate = new Date(item.timestamp).toLocaleDateString('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).replace(/\//g, '-');
+      return itemDate === filterDate;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+    });
 
   if (loading) {
     return (
@@ -165,16 +176,36 @@ export default function Page(props: {
   return (
     <main className="min-h-screen p-4 md:p-8 bg-black text-white selection:bg-zinc-700 font-sans">
       <div className="max-w-3xl mx-auto">
-        <nav className="mb-12 flex justify-between items-center">
+        <nav className="mb-12 flex flex-wrap gap-4 justify-between items-center">
           <Link href="/" className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.4em] hover:text-white transition-colors">
             ← Index
           </Link>
-          <button 
-            onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-            className="text-[10px] font-bold text-zinc-400 bg-zinc-900 px-3 py-1 border border-zinc-800 hover:text-white transition-all"
-          >
-            Sort: {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {/* 日付フィルタ */}
+            <input 
+              type="date" 
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="text-[10px] font-bold text-zinc-300 bg-zinc-900 px-2 py-1 border border-zinc-800 focus:outline-none focus:border-zinc-500 transition-all"
+            />
+            {filterDate && (
+              <button 
+                onClick={() => setFilterDate("")}
+                className="text-[10px] font-bold text-zinc-500 hover:text-zinc-200 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+            <div className="w-[1px] h-4 bg-zinc-800 mx-1"></div>
+            {/* ソート */}
+            <button 
+              onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+              className="text-[10px] font-bold text-zinc-400 bg-zinc-900 px-3 py-1 border border-zinc-800 hover:text-white transition-all"
+            >
+              {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
+            </button>
+          </div>
         </nav>
 
         <header className="mb-20 text-center">
@@ -183,50 +214,55 @@ export default function Page(props: {
         </header>
 
         <div className="flex flex-col gap-20">
-          {sortedItems.map((item, index) => {
-            const isVertical = item.comment && (item.comment.includes('縦') || item.comment.includes('縦長'));
-            return (
-              <article key={item.timestamp} className="group">
-                {item.type === 'image' && (
-                  <div className="w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
-                    <img src={getMediaUrl(item.content, 'image')} className="w-full h-auto block grayscale-[10%] hover:grayscale-0 transition-all duration-700" />
-                  </div>
-                )}
-                {item.type === 'video' && (
-                  <div className={`w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl relative ${isVertical ? 'aspect-[9/16]' : 'aspect-video'}`}>
-                    <iframe src={getMediaUrl(item.content, 'video')} className="absolute top-0 left-0 w-full h-full" allowFullScreen></iframe>
-                  </div>
-                )}
-                {item.type === 'audio' && (
-                  <div className="w-full h-40 bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
-                    <iframe src={getMediaUrl(item.content, 'audio')} className="w-full h-full"></iframe>
-                  </div>
-                )}
-
-                <div className="mt-8 px-1 relative">
-                  {/* 削除ボタン */}
-                  <button 
-                    onClick={() => handleDelete(item.timestamp)}
-                    className="absolute -top-4 right-0 text-[10px] text-zinc-700 hover:text-red-500 transition-colors bg-black px-2 py-1"
-                  >
-                    Delete
-                  </button>
-
-                  {item.type === 'text' ? (
-                    <div className="p-8 bg-zinc-900 border border-zinc-800 shadow-inner"><LinkedText text={item.content} /></div>
-                  ) : (
-                    item.comment && <div className="mb-6"><LinkedText text={item.comment} className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight break-words" /></div>
+          {processedItems.length > 0 ? (
+            processedItems.map((item) => {
+              const isVertical = item.comment && (item.comment.includes('縦') || item.comment.includes('縦長'));
+              return (
+                <article key={item.timestamp} className="group">
+                  {item.type === 'image' && (
+                    <div className="w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
+                      <img src={getMediaUrl(item.content, 'image')} className="w-full h-auto block grayscale-[10%] hover:grayscale-0 transition-all duration-700" />
+                    </div>
                   )}
-                  <footer className="mt-4 flex items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.4em]">
-                    <time>{new Date(item.timestamp).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time>
-                    <span className="text-zinc-500 font-normal italic">by {item.author || "User"}</span>
-                    <div className="flex-grow h-[1px] bg-zinc-900"></div>
-                    <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5">{item.type}</span>
-                  </footer>
-                </div>
-              </article>
-            );
-          })}
+                  {item.type === 'video' && (
+                    <div className={`w-full bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl relative ${isVertical ? 'aspect-[9/16]' : 'aspect-video'}`}>
+                      <iframe src={getMediaUrl(item.content, 'video')} className="absolute top-0 left-0 w-full h-full" allowFullScreen></iframe>
+                    </div>
+                  )}
+                  {item.type === 'audio' && (
+                    <div className="w-full h-40 bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
+                      <iframe src={getMediaUrl(item.content, 'audio')} className="w-full h-full"></iframe>
+                    </div>
+                  )}
+
+                  <div className="mt-8 px-1 relative">
+                    <button 
+                      onClick={() => handleDelete(item.timestamp)}
+                      className="absolute -top-4 right-0 text-[10px] text-zinc-700 hover:text-red-500 transition-colors bg-black px-2 py-1"
+                    >
+                      Delete
+                    </button>
+
+                    {item.type === 'text' ? (
+                      <div className="p-8 bg-zinc-900 border border-zinc-800 shadow-inner"><LinkedText text={item.content} /></div>
+                    ) : (
+                      item.comment && <div className="mb-6"><LinkedText text={item.comment} className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight break-words" /></div>
+                    )}
+                    <footer className="mt-4 flex items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.4em]">
+                      <time>{new Date(item.timestamp).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time>
+                      <span className="text-zinc-500 font-normal italic">by {item.author || "User"}</span>
+                      <div className="flex-grow h-[1px] bg-zinc-900"></div>
+                      <span className="bg-zinc-800 text-zinc-500 px-2 py-0.5">{item.type}</span>
+                    </footer>
+                  </div>
+                </article>
+              );
+            })
+          ) : (
+            <div className="text-center py-20 text-zinc-600 text-xs uppercase tracking-widest">
+              No results for this date
+            </div>
+          )}
         </div>
       </div>
     </main>
